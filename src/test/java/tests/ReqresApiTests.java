@@ -1,37 +1,38 @@
 package tests;
 
 import static io.restassured.RestAssured.given;
-import static io.restassured.http.ContentType.JSON;
-import static org.hamcrest.Matchers.is;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static specs.Specification.baseRequest;
+import static specs.Specification.baseResponse;
+import static specs.Specification.createUserResponse;
+import static specs.Specification.errorUserResponse;
 
-import io.restassured.RestAssured;
-import org.junit.jupiter.api.BeforeAll;
+import models.lombok.register.RegisterUserResponseLombokModel;
+import models.lombok.singleuser.SingleUserResponseLombokModel;
+import models.pojo.CreateUserPojoModel;
+import models.pojo.RegisterUserPojoModel;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 public class ReqresApiTests {
 
-    @BeforeAll
-    static void setUp() {
-        RestAssured.baseURI = "https://reqres.in/api";
-    }
-
     @DisplayName("Проверяем ссылку поддержки из ответа")
     @Tag("api")
     @Test
     void getSingleUserSupportURL() {
-        given()
-            .log().uri()
-            .log().body()
+        String expectedSupportUrl = "https://reqres.in/#support-heading";
+
+        SingleUserResponseLombokModel response = given()
+            .spec(baseRequest)
             .when()
             .get("/users/2")
             .then()
-            .log().status()
-            .log().body()
-            .body("support.url", is("https://reqres.in/#support-heading"))
-            .statusCode(200);
+            .spec(baseResponse)
+            .extract().as(SingleUserResponseLombokModel.class);
+
+        assertThat(response.getSupport().getUrl()).isEqualTo(expectedSupportUrl);
     }
 
     @DisplayName("Проверяем ссылку поддержки из ответа, используя extract\\path")
@@ -41,14 +42,11 @@ public class ReqresApiTests {
         String expectedSupportUrl = "https://reqres.in/#support-heading";
 
         String actualResponseUrl = given()
-            .log().uri()
-            .log().body()
-            .contentType(JSON)
+            .spec(baseRequest)
             .when()
             .get("/users/2")
             .then()
-            .log().status()
-            .log().body()
+            .spec(baseResponse)
             .extract()
             .path("support.url");
 
@@ -59,63 +57,61 @@ public class ReqresApiTests {
     @Tag("api")
     @Test
     void postCreateUser() {
-        String name = "Neo";
-        String job = "rebel";
-        String body = "{ \"name\": \"" + name + "\",\"job\": \"" + job + "\" }";
+        CreateUserPojoModel createUser = new CreateUserPojoModel();
+        createUser.setJob("rebel");
+        createUser.setName("Neo");
 
-        given()
-            .log().uri()
-            .log().body()
-            .contentType(JSON)
-            .body(body)
+        CreateUserPojoModel user = given()
+            .spec(baseRequest)
+            .body(createUser)
             .when()
             .post("/users")
             .then()
-            .log().status()
-            .log().body()
-            .body("name", is(name))
-            .body("job", is(job))
-            .statusCode(201);
+            .spec(createUserResponse)
+            .extract().as(CreateUserPojoModel.class);
+
+        assertThat(user.getName()).isEqualTo("Neo");
+        assertThat(user.getJob()).isEqualTo("rebel");
     }
 
     @DisplayName("Зарегистрировались, получили id и token")
     @Tag("api")
     @Test
     void postSuccessRegister() {
-        String body = "{\"email\": \"eve.holt@reqres.in\",\"password\": \"pistol\"}";
+        RegisterUserPojoModel user = new RegisterUserPojoModel();
+        user.setEmail("eve.holt@reqres.in");
+        user.setPassword("pistol");
 
-        given()
-            .log().uri()
-            .log().body()
-            .contentType(JSON)
-            .body(body)
+        RegisterUserResponseLombokModel register = given()
+            .spec(baseRequest)
+            .body(user)
             .when()
             .post("/register")
             .then()
-            .log().status()
-            .log().body()
-            .body("id", is(4))
-            .body("token", is("QpwL5tke4Pnpja7X4"))
-            .statusCode(200);
+            .spec(baseResponse)
+            .extract().as(RegisterUserResponseLombokModel.class);
+
+        assertThat(register.getId()).isEqualTo("4");
+        assertThat(register.getToken()).isEqualTo("QpwL5tke4Pnpja7X4");
     }
 
     @DisplayName("Ошибка регистрации. Пользователь не определен.")
     @Tag("api")
     @Test
     void postUnsuccessfulRegistration() {
-        String body = "{\"email\": \"bad@email.in\",\"password\": \"pistol\"}";
+        RegisterUserPojoModel user = new RegisterUserPojoModel();
+        user.setEmail("bad@email.in");
+        user.setPassword("pistol");
 
-        given()
-            .log().uri()
-            .log().body()
-            .contentType(JSON)
-            .body(body)
+        RegisterUserResponseLombokModel register = given()
+            .spec(baseRequest)
+            .body(user)
             .when()
             .post("/register")
             .then()
-            .log().status()
-            .log().body()
-            .body("error", is("Note: Only defined users succeed registration"))
-            .statusCode(400);
+            .spec(errorUserResponse)
+            .extract().as(RegisterUserResponseLombokModel.class);
+
+        assertThat(register.getError()).isEqualTo("Note: Only defined users succeed registration");
     }
 }

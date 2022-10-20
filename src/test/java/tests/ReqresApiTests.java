@@ -2,6 +2,7 @@ package tests;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.hamcrest.Matchers.hasItem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static specs.Specification.baseRequest;
 import static specs.Specification.baseResponse;
@@ -17,6 +18,20 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 public class ReqresApiTests {
+
+    @DisplayName("Check user Email exist with Groovy")
+    @Tag("api")
+    @Test
+    void checkUsersEmail(){
+        given()
+            .spec(baseRequest)
+            .when()
+            .get("/users?page=2")
+            .then()
+            .spec(baseResponse)
+            .body("data.findAll{it.email =~/.*?@reqres.in/}.email.flatten()",
+                hasItem("lindsay.ferguson@reqres.in"));
+    }
 
     @DisplayName("Проверяем ссылку поддержки из ответа")
     @Tag("api")
@@ -35,7 +50,7 @@ public class ReqresApiTests {
         assertThat(response.getSupport().getUrl()).isEqualTo(expectedSupportUrl);
     }
 
-    @DisplayName("Проверяем ссылку поддержки из ответа, используя extract\\path")
+    @DisplayName("Проверяем ссылку поддержки из ответа, используя extract и path")
     @Tag("api")
     @Test
     void getWithPathSingleUser() {
